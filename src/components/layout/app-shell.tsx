@@ -15,13 +15,15 @@ import {
   Settings,
   Menu,
   LogOut,
-  Sparkles
+  Sparkles,
+  Target
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Accountability", href: "/accountability", icon: Target },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "CRM", href: "/crm", icon: Users },
