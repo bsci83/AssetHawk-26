@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
 
 export const metadata: Metadata = {
-  title: "SageAAA - Powering Your Digital Transformation",
+  title: "Your Company Name",
   description: "AI innovation with expert development to create cutting-edge solutions that drive your business forward.",
 };
 

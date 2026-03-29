@@ -45,7 +45,7 @@ const Header = () => {
                 S
               </div>
               <span className="text-xl font-montserrat font-bold text-emerald-700">
-                Sage<span className="text-emerald-500">AAA</span>
+                Ninja<span className="text-emerald-500">Sites</span>
               </span>
             </Link>
 
@@ -130,7 +130,7 @@ const Header = () => {
                 S
               </div>
               <span className="text-lg font-montserrat font-bold text-emerald-700">
-                Sage<span className="text-emerald-500">AAA</span>
+                Ninja<span className="text-emerald-500">Sites</span>
               </span>
             </Link>
             <button className="p-2" onClick={closeMobileMenu} aria-label="Close menu">

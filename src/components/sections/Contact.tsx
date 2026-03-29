@@ -14,7 +14,7 @@ const contactItems = [
   {
     icon: <Mail className="h-6 w-6" />,
     title: "Email Us",
-    content: "info@sageaaa.com\nsupport@sageaaa.com"
+    content: "info@yourdomain.com\nsupport@yourdomain.com"
   },
   {
     icon: <Phone className="h-6 w-6" />,

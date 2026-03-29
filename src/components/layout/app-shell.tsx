@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">SageAAA</span>
+          <span className="font-bold text-lg">NinjaSites</span>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger>
@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r bg-card">
           <div className="flex items-center gap-2 px-6 py-4 border-b">
             <Sparkles className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">SageAAA</span>
+            <span className="font-bold text-lg">NinjaSites</span>
           </div>
           
           <nav className="flex-1 px-3 py-4 space-y-1">
@@ -125,7 +125,7 @@ function MobileNav({ pathname, onLinkClick }: { pathname: string; onLinkClick: (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-4 border-b">
         <Sparkles className="h-6 w-6 text-primary" />
-        <span className="font-bold text-lg">SageAAA</span>
+        <span className="font-bold text-lg">NinjaSites</span>
       </div>
       
       <nav className="flex-1 px-3 py-4 space-y-1">
