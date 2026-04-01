@@ -149,6 +149,12 @@ export default function DevClawPage() {
                 Download for macOS
               </a>
               <a 
+                href="/chat" 
+                className="px-8 py-4 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Try ctrl-a Chat
+              </a>
+              <a 
                 href="https://github.com/bsci83/devclaw-oss" 
                 target="_blank"
                 className="px-8 py-4 border-2 border-gray-600 text-white font-semibold rounded-lg hover:border-white transition-colors"
