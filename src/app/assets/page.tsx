@@ -603,7 +603,7 @@ export default function AssetsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Asset Tag *</label>
-                  <input type="text" value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="ASSET-001" required={!editingAsset} disabled={!!editingAsset} />
+                  <input type="text" value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Leave blank for auto-assign" disabled={!!editingAsset} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

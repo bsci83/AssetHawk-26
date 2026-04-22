@@ -26,6 +26,29 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Helper: generate next asset tag for org
+async function generateAssetTag(orgId: string): Promise<string> {
+  const prefix = 'QR'
+  const orgSuffix = orgId.slice(-4).toUpperCase()
+  
+  // Get existing asset tags for this org to find max number
+  const result = await turso.execute({
+    sql: "SELECT asset_tag FROM assets WHERE org_id = ? AND asset_tag LIKE ? ORDER BY asset_tag DESC LIMIT 1",
+    args: [orgId, `${prefix}-${orgSuffix}-%`]
+  })
+  
+  let nextNum = 1
+  if (result.rows.length > 0) {
+    const lastTag = result.rows[0].asset_tag as string
+    const match = lastTag.match(/(\d+)$/)
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1
+    }
+  }
+  
+  return `${prefix}-${orgSuffix}-${nextNum.toString().padStart(4, '0')}`
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { 
@@ -45,10 +68,12 @@ export async function POST(req: NextRequest) {
       locationData
     } = await req.json();
     
-    if (!orgId || !assetTag || !name) {
-      return NextResponse.json({ error: 'orgId, assetTag, name required' }, { status: 400 });
+    if (!orgId || !name) {
+      return NextResponse.json({ error: 'orgId and name required' }, { status: 400 });
     }
 
+    // Auto-generate asset tag if not provided
+    const finalAssetTag = assetTag?.trim() || await generateAssetTag(orgId)
     const id = generateId();
     const qrData = qrContent || `assethawk://asset/${id}`;
     
