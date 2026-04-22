@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
 
 export const metadata: Metadata = {
-  title: "Your Company Name",
-  description: "AI innovation with expert development to create cutting-edge solutions that drive your business forward.",
+  title: "AssetHawk - QR Code Asset Management",
+  description: "Generate and manage secure QR codes for asset tracking, information sharing, and location-aware experiences.",
 };
 
 export default function RootLayout({
