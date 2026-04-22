@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { QrCode, FileText, Clock } from 'lucide-react'
+import ChatWidget from '@/components/chat/ChatWidget'
 
 export default function TextDisplayPage() {
   const params = useParams()
@@ -125,6 +126,16 @@ export default function TextDisplayPage() {
             <QrCode className="w-5 h-5" />
             Create your own QR codes with AssetHawk
           </a>
+        </div>
+        
+        {/* Chat Widget - Customer can ask questions about this location */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <ChatWidget 
+            ctrlAUrl="https://ctrl-a-workspace.onrender.com"
+            appKey="assethawk-customer-chat"
+            businessName="AssetHawk Assistant"
+            position="bottom-right"
+          />
         </div>
       </div>
     </div>
