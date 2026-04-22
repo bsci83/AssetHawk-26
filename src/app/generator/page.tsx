@@ -48,9 +48,28 @@ export default function QRGeneratorPage() {
       case 'wifi':
         content = `WIFI:T:${wifiType};S:${wifiSsid};P:${wifiPassword};;`
         break
-      case 'text':
-        content = textContent
+      case 'text': {
+        if (!textContent.trim()) return
+        // For text QR codes, store in DB and use display URL
+        try {
+          const res = await fetch('/api/qr/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: textContent })
+          })
+          const data = await res.json()
+          if (data.error) {
+            console.error('Text QR API error:', data.error)
+            return
+          }
+          // QR points to the display page URL
+          content = data.qrUrl
+        } catch (e) {
+          console.error('Failed to create text QR:', e)
+          return
+        }
         break
+      }
     }
 
     if (!content) return

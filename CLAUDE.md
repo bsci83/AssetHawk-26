@@ -1,45 +1,39 @@
-# SageAAA-2026
+# SageAAA-26 / AssetHawk-26
 
-White-label SaaS framework for building AI-powered business platforms.
+**Location:** ~/AppLand/SageAAA-26/
+**Package:** sageaaa-2026
+**GitHub:** github.com/bsci83/AssetHawk-26
 
-## Quick Start
+## What This Is
+AssetHawk QR code management platform — the QR app, NOT SageAAA.
+The folder was formerly called "ninja-sites" but is now correctly identified.
 
-```bash
-cd sageaaa-2026
-npm install
-npm run dev
-```
+**SageAAA** lives at: `/Volumes/2 TB/SaasLand/V0 built/SageAAA-FinishLine app/`
 
-## Environment
+## Deploy
+- **Vercel BETA team** → `bifill83@gmail.com`
+- Deploy via: `vercel deploy --yes --prod --token <token>`
+- Or push to GitHub → Vercel auto-deploys
+- **Token:** (stored in Vercel dashboard, not in files)
 
-Copy `.env.example` to `.env.local` and configure:
+## Git Email (CRITICAL)
+All commits MUST use `bifill83@gmail.com`:
+- Set globally: `git config --global user.email "bifill83@gmail.com"`
+- Wrong email = Vercel blocks deployment
 
-- Turso DB credentials
-- Firebase Auth
-- Resend API key
+## Pages Built (73 total)
+- Landing, Auth (/signin, /signup)
+- Dashboard, Assets, Scan, Audit, Gallery
+- /generator (URL/WiFi/Text QR + logo + colors)
+- /bulk (CSV upload + ZIP download)
+- /propertypal (WiFi QR for rentals)
+- /dynamic-qr (Dynamic QR resolution)
+- /integrations (MCP + REST API)
+- /organization/* (settings, users, billing, sso)
+- /maintenance/* (dashboard, schedules, work orders)
+- /reports, /templates
 
-## Pages
-
-- `/` - Landing page
-- `/dashboard` - Main dashboard
-- `/projects` - Project management
-- `/tasks` - Task tracking
-- `/crm` - Customer relationship management
-- `/chat` - AI chatbot (ctrl-a)
-- `/analytics` - KPI dashboards
-- `/settings` - Account & integrations
-
-## Tech Stack
-
-- Next.js 14 (App Router)
-- shadcn/ui + Tailwind
-- Firebase Auth
-- Turso DB
-- Resend (email)
-
-## Agent Integration
-
-Run session logger after work:
-```bash
-./scripts/log-session.sh "summary" "details"
-```
+## Connected Services
+- **Auth:** NextAuth.js
+- **Database:** Turso (assethawk-bifill.turso.io)
+- **Hosting:** Vercel BETA team
