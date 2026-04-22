@@ -33,10 +33,10 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarFallback>{user?.displayName?.split(" ").map(n => n[0]).join("") || "U"}</AvatarFallback>
+                <AvatarFallback>{(user as any)?.displayName?.split(" ").map((n: string) => n[0]).join("") || "U"}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{user?.displayName || "Not signed in"}</p>
+                <p className="font-medium">{(user as any)?.displayName || "Not signed in"}</p>
                 <p className="text-sm text-muted-foreground">{user?.email || "Sign in to see email"}</p>
               </div>
             </div>

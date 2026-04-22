@@ -90,12 +90,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {user ? (
               <div className="flex items-center gap-3">
                 <img
-                  src={user.photoURL || ""}
-                  alt={user.displayName || ""}
+                  src={(user as any).photoURL || ""}
+                  alt={(user as any).displayName || ""}
                   className="h-8 w-8 rounded-full"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user.displayName}</p>
+                  <p className="text-sm font-medium truncate">{(user as any).displayName}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => logout()}>
                   <LogOut className="h-4 w-4" />
@@ -154,12 +154,12 @@ function MobileNav({ pathname, onLinkClick }: { pathname: string; onLinkClick: (
         {user ? (
           <div className="flex items-center gap-3">
             <img
-              src={user.photoURL || ""}
-              alt={user.displayName || ""}
+              src={(user as any).photoURL || ""}
+              alt={(user as any).displayName || ""}
               className="h-8 w-8 rounded-full"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.displayName}</p>
+              <p className="text-sm font-medium truncate">{(user as any).displayName}</p>
             </div>
             <Button variant="ghost" size="icon" onClick={() => logout()}>
               <LogOut className="h-4 w-4" />

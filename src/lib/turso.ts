@@ -1,23 +1,21 @@
-import { createClient, type Client } from '@libsql/client';
+/**
+ * AssetHawk on Ninja Sites - Core Setup
+ * QR code management platform rebuilt on Turso
+ */
 
-let turso: Client | null = null;
+import { createClient } from '@libsql/client';
 
-export function getTurso(): Client {
-  if (!turso) {
-    turso = createClient({
-      url: process.env.TURSO_DATABASE_URL || '',
-      authToken: process.env.TURSO_AUTH_TOKEN || '',
-    });
-  }
-  return turso;
+// Use existing AssetHawk Turso database
+export const turso = createClient({
+  url: 'libsql://assethawk-bifill.aws-us-east-1.turso.io',
+  authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzY3OTMzMzksImlkIjoiMDE5ZGIxMjItOTYwMS03N2UzLThjNjAtMDhkOTQ5MTI5M2UyIiwicmlkIjoiMDVlMTA0ZTgtYzIyYi00MzFjLTkxMzctMjVhNzU3OGJlNGFmIn0.6HgCivTBIwfKX1t8n92YdunXdcqxLAHByjv4iR84SOIQ6hk0cOeFpZWotV01ZrklB1ocF6lVq9bavBG-mGd4AQ',
+});
+
+// Simple crypto utilities
+export function generateId() {
+  return crypto.randomUUID();
 }
 
-// Helper to execute queries
-export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-  const result = await getTurso().execute({ sql, args: params as never });
-  return result.rows as T[];
-}
-
-export async function execute(sql: string, params: unknown[] = []) {
-  return getTurso().execute({ sql, args: params as never });
+export function now() {
+  return new Date().toISOString();
 }

@@ -1,38 +1,56 @@
+/**
+ * Auth hook - Turso-backed, no NextAuth dependency
+ */
 "use client";
 
-import { auth } from '@/lib/firebase';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
-const googleProvider = new GoogleAuthProvider();
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  displayName?: string;
+  photoURL?: string;
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
+    const stored = localStorage.getItem('assethawk_user');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        setUser({
+          ...data.user,
+          displayName: `${data.user.firstName} ${data.user.lastName}`,
+        });
+      } catch {
+        setUser(null);
+      }
     }
-    
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    
-    return () => unsubscribe();
+    setLoading(false);
   }, []);
 
   const login = async () => {
-    if (!auth) throw new Error('Firebase not configured');
-    return signInWithPopup(auth, googleProvider);
+    window.location.href = "/assethawk/signin";
   };
 
   const logout = async () => {
-    if (!auth) throw new Error('Firebase not configured');
-    return signOut(auth);
+    localStorage.removeItem('assethawk_user');
+    setUser(null);
+    window.location.href = "/assethawk/signin";
   };
 
-  return { user, loading, login, logout, isConfigured: !!auth };
+  return { 
+    user, 
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+    isConfigured: true, // Turso always configured for AssetHawk
+  };
 }
