@@ -15,6 +15,7 @@ interface WifiConfig {
 export default function QRGenerator() {
   const [tab, setTab] = useState<Tab>('url')
   const [text, setText] = useState('')
+  const [textDisplayUrl, setTextDisplayUrl] = useState<string | null>(null)
   const [qrUrl, setQrUrl] = useState('')
   const [size, setSize] = useState(200)
   const [qrColor, setQrColor] = useState('#6d28d9')
@@ -22,11 +23,43 @@ export default function QRGenerator() {
   const [copied, setCopied] = useState(false)
   const [wifi, setWifi] = useState<WifiConfig>({ ssid: '', password: '', type: 'WPA' })
 
+  // When text changes for TEXT tab, create a display URL via API
+  useEffect(() => {
+    if (tab !== 'text' || !text.trim()) {
+      setTextDisplayUrl(null)
+      return
+    }
+    
+    const controller = new AbortController()
+    const createTextQr = async () => {
+      try {
+        const res = await fetch('/api/qr/text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+          signal: controller.signal
+        })
+        const data = await res.json()
+        if (data.qrUrl) {
+          setTextDisplayUrl(data.qrUrl)
+        }
+      } catch (e) {
+        // User is still typing, ignore
+      }
+    }
+    
+    const timer = setTimeout(createTextQr, 800)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [text, tab])
+
   function buildContent(): string {
     if (tab === 'wifi') {
       return wifi.ssid ? `WIFI:T:${wifi.type};S:${wifi.ssid};P:${wifi.password};;` : ''
     }
-    if (tab === 'text') return text
+    if (tab === 'text') {
+      // Use the display URL if available, otherwise fall back to raw text
+      return textDisplayUrl || text
+    }
     return text
   }
 
@@ -52,7 +85,7 @@ export default function QRGenerator() {
     }, 300) // Debounce 300ms
 
     return () => clearTimeout(timer)
-  }, [text, wifi, tab, size, qrColor, bgColor])
+  }, [text, wifi, tab, size, qrColor, bgColor, textDisplayUrl])
 
   async function handleShare() {
     if (!qrUrl) return
