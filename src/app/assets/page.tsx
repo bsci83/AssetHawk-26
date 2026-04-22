@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import QRCode from 'qrcode'
-import { QrCode, Plus, Download, Trash2, Eye, Copy, MapPin, Package, Search, Grid, List } from 'lucide-react'
+import { QrCode, Plus, Download, Trash2, Eye, Copy, MapPin, Package, Search, Grid, List, Link as LinkIcon, Wifi, FileText, Globe, MapPinned } from 'lucide-react'
+
+type AssetType = 'physical' | 'text_qr' | 'url_qr' | 'wifi_qr' | 'dynamic_qr' | 'location_qr'
+type ViewMode = 'grid' | 'list'
 
 interface Asset {
   id: string
@@ -19,6 +22,9 @@ interface Asset {
   current_value?: number
   created_at: string
   qr_data?: string
+  qr_type?: string
+  qr_content?: string
+  location_data?: string
 }
 
 export default function AssetsPage() {
@@ -31,9 +37,12 @@ export default function AssetsPage() {
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [saving, setSaving] = useState(false)
 
+  // Form state
+  const [assetType, setAssetType] = useState<AssetType>('physical')
   const [form, setForm] = useState({
     assetTag: '',
     name: '',
@@ -43,7 +52,20 @@ export default function AssetsPage() {
     status: 'active',
     purchaseDate: '',
     purchasePrice: '',
-    currentValue: ''
+    currentValue: '',
+    // QR fields
+    url: '',
+    text: '',
+    wifiSsid: '',
+    wifiPassword: '',
+    wifiType: 'WPA',
+    dynamicUrl: '',
+    // Location fields
+    locationName: '',
+    locationLat: '',
+    locationLng: '',
+    locationRadius: '100',
+    defaultText: '',
   })
 
   useEffect(() => {
@@ -83,12 +105,31 @@ export default function AssetsPage() {
     }
   }
 
+  function buildQrContent(): string {
+    switch (assetType) {
+      case 'url_qr':
+        return form.url || 'https://example.com'
+      case 'text_qr':
+        return form.text || 'Sample text'
+      case 'wifi_qr':
+        return `WIFI:T:${form.wifiType};S:${form.wifiSsid};P:${form.wifiPassword};;`
+      case 'dynamic_qr':
+        return form.dynamicUrl || 'https://example.com'
+      case 'location_qr':
+        return `GEO:${form.locationLat || 0},${form.locationLng || 0};u=${form.locationRadius || 100}`
+      default:
+        return `assethawk://asset/`
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!user?.org?.id) return
 
     setSaving(true)
     try {
+      const qrContent = buildQrContent()
+      
       const res = await fetch('/api/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,12 +138,21 @@ export default function AssetsPage() {
           assetTag: form.assetTag,
           name: form.name,
           description: form.description,
-          category: form.category,
+          category: assetType === 'physical' ? form.category : `qr_${assetType}`,
           location: form.location,
           status: form.status,
           purchaseDate: form.purchaseDate,
           purchasePrice: form.purchasePrice ? parseFloat(form.purchasePrice) : undefined,
-          currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
+          currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined,
+          qrType: assetType,
+          qrContent: qrContent,
+          locationData: assetType === 'location_qr' ? JSON.stringify({
+            name: form.locationName,
+            lat: parseFloat(form.locationLat),
+            lng: parseFloat(form.locationLng),
+            radius: parseInt(form.locationRadius),
+            defaultText: form.defaultText
+          }) : undefined
         }),
       })
 
@@ -133,9 +183,6 @@ export default function AssetsPage() {
           category: form.category,
           location: form.location,
           status: form.status,
-          purchaseDate: form.purchaseDate,
-          purchasePrice: form.purchasePrice ? parseFloat(form.purchasePrice) : undefined,
-          currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
         }),
       })
 
@@ -171,9 +218,21 @@ export default function AssetsPage() {
       location: asset.location || '',
       status: asset.status || 'active',
       purchaseDate: asset.purchase_date ? asset.purchase_date.split('T')[0] : '',
-      purchasePrice: asset.purchase_price?.toString() || '',
-      currentValue: asset.current_value?.toString() || ''
+      purchasePrice: asset.purchase_price != null ? String(asset.purchase_price) : '',
+      currentValue: asset.current_value != null ? String(asset.current_value) : '',
+      url: '',
+      text: '',
+      wifiSsid: '',
+      wifiPassword: '',
+      wifiType: 'WPA',
+      dynamicUrl: '',
+      locationName: '',
+      locationLat: '',
+      locationLng: '',
+      locationRadius: '100',
+      defaultText: '',
     })
+    setAssetType((asset.category?.startsWith('qr_') ? asset.category.replace('qr_', '') : 'physical') as AssetType)
     setEditingAsset(asset)
   }
 
@@ -187,20 +246,32 @@ export default function AssetsPage() {
       status: 'active',
       purchaseDate: '',
       purchasePrice: '',
-      currentValue: ''
+      currentValue: '',
+      url: '',
+      text: '',
+      wifiSsid: '',
+      wifiPassword: '',
+      wifiType: 'WPA',
+      dynamicUrl: '',
+      locationName: '',
+      locationLat: '',
+      locationLng: '',
+      locationRadius: '100',
+      defaultText: '',
     })
+    setAssetType('physical')
   }
 
   async function generateQR(asset: Asset) {
-    const qrData = `assethawk://asset/${asset.id}`
-    const url = await QRCode.toDataURL(qrData, { width: 200, margin: 2 })
+    let content = asset.qr_content || `assethawk://asset/${asset.id}`
+    const url = await QRCode.toDataURL(content, { width: 200, margin: 2 })
     setQrCodes(prev => ({ ...prev, [asset.id]: url }))
   }
 
   async function downloadQr(asset: Asset) {
-    const qrData = `assethawk://asset/${asset.id}`
+    let content = asset.qr_content || `assethawk://asset/${asset.id}`
     const canvas = document.createElement('canvas')
-    await QRCode.toCanvas(canvas, qrData, { width: 1024, margin: 2 })
+    await QRCode.toCanvas(canvas, content, { width: 1024, margin: 2 })
     canvas.toBlob((blob) => {
       if (blob) {
         const url = URL.createObjectURL(blob)
@@ -213,9 +284,26 @@ export default function AssetsPage() {
     })
   }
 
-  function copyQrData(asset: Asset) {
-    const content = `assethawk://asset/${asset.id}`
-    navigator.clipboard.writeText(content)
+  function getQrIcon(qrType?: string) {
+    switch (qrType) {
+      case 'text_qr': return <FileText className="h-4 w-4" />
+      case 'url_qr': return <LinkIcon className="h-4 w-4" />
+      case 'wifi_qr': return <Wifi className="h-4 w-4" />
+      case 'dynamic_qr': return <Globe className="h-4 w-4" />
+      case 'location_qr': return <MapPinned className="h-4 w-4" />
+      default: return <QrCode className="h-4 w-4" />
+    }
+  }
+
+  function getQrTypeLabel(qrType?: string) {
+    switch (qrType) {
+      case 'text_qr': return 'Text QR'
+      case 'url_qr': return 'URL QR'
+      case 'wifi_qr': return 'WiFi QR'
+      case 'dynamic_qr': return 'Dynamic QR'
+      case 'location_qr': return 'Location QR'
+      default: return 'Physical'
+    }
   }
 
   const filteredAssets = assets.filter(asset => {
@@ -224,13 +312,17 @@ export default function AssetsPage() {
       asset.asset_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.category?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || asset.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesType = typeFilter === 'all' || 
+      (typeFilter === 'qr' && asset.category?.startsWith('qr_')) ||
+      (typeFilter === 'physical' && !asset.category?.startsWith('qr_'))
+    return matchesSearch && matchesStatus && matchesType
   })
 
   const stats = {
     total: assets.length,
     active: assets.filter(a => a.status === 'active').length,
     maintenance: assets.filter(a => a.status === 'maintenance').length,
+    qrCodes: assets.filter(a => a.category?.startsWith('qr_')).length,
     categories: [...new Set(assets.map(a => a.category).filter(Boolean))]
   }
 
@@ -244,19 +336,14 @@ export default function AssetsPage() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <Link href="/" className="flex items-center space-x-2">
-                <QrCode className="h-8 w-8 text-purple-600" />
-                <span className="text-2xl font-bold text-gray-900">AssetHawk</span>
-              </Link>
-            </div>
+            <Link href="/" className="flex items-center space-x-2">
+              <QrCode className="h-8 w-8 text-purple-600" />
+              <span className="text-2xl font-bold text-gray-900">AssetHawk</span>
+            </Link>
             <nav className="flex items-center space-x-4">
               <Link href="/dashboard" className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Dashboard</Link>
               <Link href="/scan" className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Scan</Link>
-              <button onClick={() => {
-                localStorage.removeItem('assethawk_user')
-                router.push('/signin')
-              }} className="px-3 py-1 text-sm border rounded hover:bg-gray-50">Sign Out</button>
+              <button onClick={() => { localStorage.removeItem('assethawk_user'); router.push('/signin') }} className="px-3 py-1 text-sm border rounded hover:bg-gray-50">Sign Out</button>
             </nav>
           </div>
         </div>
@@ -264,7 +351,7 @@ export default function AssetsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center gap-3">
               <Package className="h-8 w-8 text-purple-600" />
@@ -298,7 +385,16 @@ export default function AssetsPage() {
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center gap-3">
-              <Grid className="h-8 w-8 text-orange-600" />
+              <QrCode className="h-8 w-8 text-orange-600" />
+              <div>
+                <p className="text-sm text-gray-500">QR Codes</p>
+                <p className="text-2xl font-bold">{stats.qrCodes}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3">
+              <Grid className="h-8 w-8 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-500">Categories</p>
                 <p className="text-2xl font-bold">{stats.categories.length}</p>
@@ -321,28 +417,23 @@ export default function AssetsPage() {
                   className="pl-10 pr-4 py-2 border rounded-lg w-64"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="border rounded-lg px-3 py-2"
-              >
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border rounded-lg px-3 py-2">
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="maintenance">Maintenance</option>
                 <option value="retired">Retired</option>
               </select>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border rounded-lg px-3 py-2">
+                <option value="all">All Types</option>
+                <option value="qr">QR Codes Only</option>
+                <option value="physical">Physical Only</option>
+              </select>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-400'}`}
-              >
+              <button onClick={() => setViewMode('grid')} className={`p-2 rounded ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-400'}`}>
                 <Grid className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded ${viewMode === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-400'}`}
-              >
+              <button onClick={() => setViewMode('list')} className={`p-2 rounded ${viewMode === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-400'}`}>
                 <List className="h-4 w-4" />
               </button>
               <button
@@ -368,7 +459,7 @@ export default function AssetsPage() {
             <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets Found</h3>
             <p className="text-gray-500 mb-4">
-              {searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or filters' : 'Create your first asset to generate a QR code'}
+              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all' ? 'Try adjusting your search or filters' : 'Create your first asset to get started'}
             </p>
             <button onClick={() => { resetForm(); setShowAdd(true); }} className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
               Add Your First Asset
@@ -380,8 +471,11 @@ export default function AssetsPage() {
               <div key={asset.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
-                    <p className="text-sm text-gray-500">{asset.category || 'Uncategorized'}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      {getQrIcon(asset.category)}
+                      <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
+                    </div>
+                    <p className="text-sm text-gray-500">{getQrTypeLabel(asset.category)}</p>
                   </div>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     asset.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -394,11 +488,11 @@ export default function AssetsPage() {
                 {asset.description && <p className="text-sm text-gray-600 mb-3 line-clamp-2">{asset.description}</p>}
                 <div className="space-y-2 text-sm text-gray-500 mb-4">
                   {asset.location && <div className="flex items-center gap-2"><MapPin className="h-4 w-4" />{asset.location}</div>}
-                  {asset.purchase_price && <div>Value: ${asset.purchase_price.toLocaleString()}</div>}
+                  {asset.asset_tag && <div className="flex items-center gap-2"><Package className="h-4 w-4" />{asset.asset_tag}</div>}
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => generateQR(asset)} className="flex-1 py-1.5 border rounded text-sm hover:bg-gray-50">
-                    {qrCodes[asset.id] ? <img src={qrCodes[asset.id]} alt="QR" className="w-8 h-8 mx-auto" /> : 'QR'}
+                    {qrCodes[asset.id] ? <img src={qrCodes[asset.id]} alt="QR" className="w-8 h-8 mx-auto" /> : 'Generate QR'}
                   </button>
                   <button onClick={() => openEdit(asset)} className="flex-1 py-1.5 border rounded text-sm hover:bg-gray-50">Edit</button>
                   <button onClick={() => deleteAsset(asset.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
@@ -411,12 +505,11 @@ export default function AssetsPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tag</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QR</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -425,11 +518,16 @@ export default function AssetsPage() {
                 {filteredAssets.map(asset => (
                   <tr key={asset.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {getQrIcon(asset.category)}
+                        <span className="text-sm font-medium text-gray-900">{getQrTypeLabel(asset.category)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <p className="text-sm font-medium text-gray-900">{asset.name}</p>
                       {asset.description && <p className="text-xs text-gray-500 truncate max-w-xs">{asset.description}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{asset.asset_tag}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{asset.category || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{asset.asset_tag || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{asset.location || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -438,7 +536,6 @@ export default function AssetsPage() {
                         'bg-gray-100 text-gray-700'
                       }`}>{asset.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{asset.purchase_price ? `$${asset.purchase_price.toLocaleString()}` : '-'}</td>
                     <td className="px-4 py-3">
                       {qrCodes[asset.id] ? (
                         <img src={qrCodes[asset.id]} alt="QR" className="w-10 h-10 cursor-pointer" onClick={() => downloadQr(asset)} />
@@ -451,7 +548,6 @@ export default function AssetsPage() {
                         {qrCodes[asset.id] && (
                           <>
                             <button onClick={() => downloadQr(asset)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded" title="Download QR"><Download className="h-4 w-4" /></button>
-                            <button onClick={() => copyQrData(asset)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded" title="Copy URL"><Copy className="h-4 w-4" /></button>
                           </>
                         )}
                         <button onClick={() => openEdit(asset)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded" title="Edit"><Eye className="h-4 w-4" /></button>
@@ -472,10 +568,42 @@ export default function AssetsPage() {
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">{editingAsset ? 'Edit Asset' : 'Add New Asset'}</h2>
             <form onSubmit={editingAsset ? handleUpdate : handleAdd} className="space-y-4">
+              {!editingAsset && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Asset Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setAssetType('physical')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'physical' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <Package className="h-6 w-6" />
+                      <span className="text-xs">Physical</span>
+                    </button>
+                    <button type="button" onClick={() => setAssetType('url_qr')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'url_qr' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <LinkIcon className="h-6 w-6" />
+                      <span className="text-xs">URL QR</span>
+                    </button>
+                    <button type="button" onClick={() => setAssetType('text_qr')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'text_qr' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <FileText className="h-6 w-6" />
+                      <span className="text-xs">Text QR</span>
+                    </button>
+                    <button type="button" onClick={() => setAssetType('wifi_qr')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'wifi_qr' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <Wifi className="h-6 w-6" />
+                      <span className="text-xs">WiFi QR</span>
+                    </button>
+                    <button type="button" onClick={() => setAssetType('dynamic_qr')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'dynamic_qr' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <Globe className="h-6 w-6" />
+                      <span className="text-xs">Dynamic</span>
+                    </button>
+                    <button type="button" onClick={() => setAssetType('location_qr')} className={`p-3 border rounded-lg flex flex-col items-center gap-1 ${assetType === 'location_qr' ? 'border-purple-600 bg-purple-50' : ''}`}>
+                      <MapPinned className="h-6 w-6" />
+                      <span className="text-xs">Location</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Asset Tag *</label>
-                  <input type="text" value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="LAPTOP-001" required={!editingAsset} disabled={!!editingAsset} />
+                  <input type="text" value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="ASSET-001" required={!editingAsset} disabled={!!editingAsset} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -486,41 +614,102 @@ export default function AssetsPage() {
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="MacBook Pro 16" required />
+                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder={assetType === 'physical' ? 'MacBook Pro 16"' : assetType === 'url_qr' ? 'Company Website QR' : assetType === 'text_qr' ? 'Welcome Message QR' : assetType === 'wifi_qr' ? 'Office WiFi QR' : assetType === 'dynamic_qr' ? 'Menu QR' : 'Campus Info QR'} required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* QR Type Specific Fields */}
+              {assetType === 'url_qr' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <input type="text" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Electronics" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                  <input type="url" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="https://yourwebsite.com" />
                 </div>
+              )}
+
+              {assetType === 'text_qr' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Office 101" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Text Content</label>
+                  <textarea value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} className="w-full px-3 py-2 border rounded-md" rows={3} placeholder="Enter the text people will see when they scan..." />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border rounded-md" rows={3} placeholder="Serial number, model, notes..." />
-              </div>
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Financial Information</h3>
-                <div className="grid grid-cols-3 gap-4">
+              )}
+
+              {assetType === 'wifi_qr' && (
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
-                    <input type="date" value={form.purchaseDate} onChange={e => setForm({ ...form, purchaseDate: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Network Name (SSID)</label>
+                    <input type="text" value={form.wifiSsid} onChange={e => setForm({ ...form, wifiSsid: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="MyNetwork" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
-                    <input type="number" value={form.purchasePrice} onChange={e => setForm({ ...form, purchasePrice: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="0.00" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="text" value={form.wifiPassword} onChange={e => setForm({ ...form, wifiPassword: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="password123" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Value</label>
-                    <input type="number" value={form.currentValue} onChange={e => setForm({ ...form, currentValue: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="0.00" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Security</label>
+                    <select value={form.wifiType} onChange={e => setForm({ ...form, wifiType: e.target.value })} className="w-full px-3 py-2 border rounded-md">
+                      <option value="WPA">WPA/WPA2</option>
+                      <option value="WEP">WEP</option>
+                      <option value="nopass">None</option>
+                    </select>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {assetType === 'dynamic_qr' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dynamic URL</label>
+                  <input type="url" value={form.dynamicUrl} onChange={e => setForm({ ...form, dynamicUrl: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="https://yoursite.com/page" />
+                  <p className="text-xs text-gray-500 mt-1">Change this URL anytime without reprinting the QR code</p>
+                </div>
+              )}
+
+              {assetType === 'location_qr' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location Name</label>
+                    <input type="text" value={form.locationName} onChange={e => setForm({ ...form, locationName: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Building A Entrance" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                      <input type="number" step="any" value={form.locationLat} onChange={e => setForm({ ...form, locationLat: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="40.7128" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                      <input type="number" step="any" value={form.locationLng} onChange={e => setForm({ ...form, locationLng: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="-74.0060" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Radius (meters)</label>
+                    <input type="number" value={form.locationRadius} onChange={e => setForm({ ...form, locationRadius: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="100" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Text (shown when in range)</label>
+                    <textarea value={form.defaultText} onChange={e => setForm({ ...form, defaultText: e.target.value })} className="w-full px-3 py-2 border rounded-md" rows={2} placeholder="Welcome to Building A! Check in for today's event..." />
+                  </div>
+                </div>
+              )}
+
+              {assetType === 'physical' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <input type="text" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Electronics" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                      <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Office 101" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border rounded-md" rows={2} placeholder="Serial number, model, notes..." />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
                   {saving ? (editingAsset ? 'Saving...' : 'Adding...') : (editingAsset ? 'Save Changes' : 'Add Asset')}

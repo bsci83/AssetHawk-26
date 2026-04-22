@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
       purchaseDate,
       purchasePrice,
       currentValue,
-      customFields 
+      customFields,
+      qrType,
+      qrContent,
+      locationData
     } = await req.json();
     
     if (!orgId || !assetTag || !name) {
@@ -47,10 +50,10 @@ export async function POST(req: NextRequest) {
     }
 
     const id = generateId();
-    const qrData = `assethawk://asset/${id}`;
+    const qrData = qrContent || `assethawk://asset/${id}`;
     
     await turso.execute({
-      sql: `INSERT INTO assets (id, org_id, asset_tag, name, description, status, category, location, purchase_date, purchase_price, current_value, qr_data, custom_fields)
+      sql: `INSERT INTO assets (id, org_id, asset_tag, name, description, status, category, location, purchase_date, purchase_price, current_value, qr_data, qr_url, custom_fields)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id, 
@@ -65,15 +68,23 @@ export async function POST(req: NextRequest) {
         purchasePrice || null,
         currentValue || null,
         qrData, 
-        JSON.stringify(customFields || {})
+        qrContent || null
       ]
     });
+
+    // If this is a location QR, also store location data
+    if (qrType === 'location_qr' && locationData) {
+      await turso.execute({
+        sql: `INSERT INTO qr_location_data (id, asset_id, location_data) VALUES (?, ?, ?)`,
+        args: [generateId(), id, typeof locationData === 'string' ? locationData : JSON.stringify(locationData)]
+      });
+    }
 
     // Log to audit
     await turso.execute({
       sql: `INSERT INTO audit_log (id, org_id, action, entity_type, entity_id, description)
             VALUES (?, ?, 'create', 'asset', ?, ?)`,
-      args: [generateId(), orgId, id, `Created asset: ${name} (${assetTag})`]
+      args: [generateId(), orgId, id, `Created asset: ${name} (${assetTag}) - type: ${qrType || 'physical'}`]
     });
 
     return NextResponse.json({ success: true, id });
